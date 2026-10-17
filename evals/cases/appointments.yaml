@@ -1,0 +1,17 @@
+- description: "P3 - Caso de cita mínimo (dataset inicial/provisional)"
+  vars:
+    question: "Quiero calendarizar una cita el 2026-10-01"
+    reference: "Una cita puede persistirse cuando la fecha es válida y las condiciones meteorológicas son seguras."
+    fixed_today: "2026-09-30"
+    weather_fixture: '{"temperature_c":25,"precipitation_mm":0,"cloud_cover_pct":10,"visibility_m":10000,"wind_speed_kmh":10,"wind_gust_kmh":20}'
+    weather_sequence: '[{"temperature_c":25,"precipitation_mm":0,"cloud_cover_pct":10,"visibility_m":10000,"wind_speed_kmh":10,"wind_gust_kmh":20},{"temperature_c":25,"precipitation_mm":0,"cloud_cover_pct":10,"visibility_m":10000,"wind_speed_kmh":10,"wind_gust_kmh":20}]'
+    initial_appointments: '[]'
+    required_tools: '[{"name":"consultar_clima","origin":"agent:SupervisorCentral"},{"name":"calendarizar_cita","origin":"agent:SupervisorCentral"}]'
+    expected_sequence: '["consultar_clima","calendarizar_cita"]'
+    sequence_mode: subsequence
+    expected_created_appointments: 1
+  assert:
+    - type: regex
+      value: "(?i)(cita|calendariz|decisión)"
+    - type: javascript
+      value: file://${configDir}/../assertions.js:toolCallsAndAppointments

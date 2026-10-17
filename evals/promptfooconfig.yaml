@@ -1,0 +1,38 @@
+description: "Evaluación de Promptfoo para Parachute S.A."
+
+prompts:
+  - "{{question}}"
+
+providers:
+  # El proveedor conserva estado temporal (fixtures y citas) por cada caso;
+  # un solo worker evita competir por ese estado y por la cuota de Groq.
+  - id: file://provider.py
+    config:
+      workers: 1
+      # Promptfoo mata y reinicia el worker si una ejecución del agente queda
+      # bloqueada en un proveedor externo.
+      timeout: 60000
+
+# Los casos FAQ hacen varias llamadas encadenadas (supervisor, worker y HDT4).
+# Ejecutarlos en paralelo satura Groq y hace que parezca que la evaluación no
+# termina. Estos límites hacen que el fallo sea explícito y acotado.
+evaluateOptions:
+  maxConcurrency: 1
+  timeoutMs: 65000
+  maxEvalTimeMs: 480000
+  cache: true
+
+# Defaults compartidos por P2 y P3. Los casos ya verifican contenido con
+# regex/icontains y comportamiento con assertions.js. No se usan graders LLM
+# aquí: añadir factuality o llm-rubric multiplica las llamadas remotas y vuelve
+# no determinista una suite cuya evidencia principal es la traza de tools.
+defaultTest:
+  merge: true
+  assert:
+    - type: latency
+      # Límite de observabilidad; el timeout anterior es la barrera definitiva.
+      threshold: 60000
+
+# P2 y P3 mantienen sus casos separados. Estos archivos contienen solamente
+# un caso mínimo de ejemplo y deben ampliarse con sus respectivos datasets.
+tests: file://cases/*.yaml

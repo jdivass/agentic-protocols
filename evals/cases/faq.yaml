@@ -1,0 +1,97 @@
+  - vars:
+      question: "¿Cuál es el peso máximo permitido para saltar?"
+      reference: "El peso máximo permitido para saltar es de 100 kg."
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error: false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: '100 kg'
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
+
+  - vars:
+      question: "¿Cuál es la edad mínima permitida para saltar?"
+      reference: "La edad mínima permitida para saltar es de 18 años"
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error: false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: "18 años cumplidos"
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
+
+# tests for unknown questions
+  - vars:
+      question: "¿Se permite el ingreso de alimentos y bebidas?"
+      reference: "Lo siento, no puedo responder esa pregunta con la información que tengo de Parachute S.A."
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error : false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: "Parachute S.A."
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
+
+  - vars:
+      question: "¿Hay parqueo disponible en el lugar del evento?"
+      reference: "Lo siento, no puedo responder esa pregunta con la información que tengo de Parachute S.A."
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error: false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: "Parachute S.A."
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
+
+# tests for out of context questions
+  - vars:
+      question: "¿Quién es el mejor futbolista de la historia?"
+      reference: "Lo siento, no puedo responder esa pregunta con la información que tengo de Parachute S.A."
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error: false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: "Parachute S.A."
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
+
+  - vars:
+      question: "¿Te gusta el KPOP?"
+      reference: "Lo siento, no puedo responder esa pregunta con la información que tengo de Parachute S.A."
+      required_tools:
+        - name: "consultar_faq"
+          origin: "agent:SupervisorCentral"
+        - name: "search_knowledge_base"
+          origin: "agent:FAQWorker"
+          error: false
+      expected_created_appointments: 0
+    assert:
+      - type: icontains
+        value: "Parachute S.A."
+      - type: javascript
+        value: file://${configDir}/../assertions.js:toolCallsAndAppointments
