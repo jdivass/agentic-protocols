@@ -212,7 +212,7 @@ def agent_model_settings():
     from agents import ModelSettings
     if os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY", "").startswith("gsk_"):
         return ModelSettings(extra_body={"include_reasoning": False})
-    return None
+    return ModelSettings()
 
 LATITUDE = 14.013722
 LONGITUDE = -90.771611

@@ -1,4 +1,4 @@
-# Hoja de Trabajo 6 - Evals con Promptfoo
+# Hoja de Trabajo 7 - Agentic protocol
 
 Sistema de asistencia conversacional para **Parachute S.A.** con integración a la base de conocimientos de FAQs (HDT4), verificación meteorológica en tiempo real mediante la API de Open-Meteo y agendamiento seguro de citas para paracaidismo, implementado bajo tres patrones de orquestación multiagente: Centralizada, Jerárquica y Descentralizada. Se seleccionó la aquitectura **Centralizada** para realizar la HDT6.
 
@@ -124,6 +124,34 @@ El sistema resuelve el mismo problema mediante tres arquitecturas independientes
 ---
 
 ## 4. Ejecución de las Arquitecturas
+
+### Servidor MCP propio (Streamable HTTP)
+
+`mcp_server.py` publica las herramientas compartidas de clima, FAQs y citas por
+MCP usando Streamable HTTP. Las funciones son las mismas de la arquitectura
+centralizada y `calendarizar_cita` repite la consulta meteorológica antes de
+guardar.
+
+Instala la dependencia (`pip install -r requirements.txt`) y levanta el servidor:
+
+```bash
+python mcp_server.py
+```
+
+El endpoint MCP queda en `http://localhost:8000/mcp`. Configura ese URL en un
+cliente MCP compatible con Streamable HTTP y mantén el proceso activo mientras
+el cliente lo usa. `centralizada.py` ya actúa como cliente con
+`MCPServerStreamableHttp` de OpenAI Agents. Para cambiar el URL del servidor
+puedes definir `PARACHUTE_MCP_URL`; por defecto usa `http://localhost:8000/mcp`.
+Para cambiar interfaz o puerto, ajusta `host` y `port` en `mcp_server.py`.
+
+Las herramientas disponibles son `consultar_clima(date)`,
+`consultar_faq(question)` y `calendarizar_cita(date)`. Las fechas usan
+`YYYY-MM-DD`.
+
+Abre dos terminales: en la primera inicia `python mcp_server.py`; en la segunda,
+`python centralizada.py`. El servidor debe estar levantado antes de iniciar el
+supervisor.
 
 Cada programa soporta dos modalidades: **consulta única vía argumentos** o **sesión de chat interactiva**:
 
