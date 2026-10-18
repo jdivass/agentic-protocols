@@ -217,6 +217,12 @@ def agent_model_settings():
 LATITUDE = 14.013722
 LONGITUDE = -90.771611
 MAX_FORECAST_DAYS = 16
+WIND_SPEED_MARGINAL_KMH = 20
+WIND_SPEED_UNSAFE_KMH = 28
+WIND_GUST_UNSAFE_KMH = 35
+PRECIPITATION_UNSAFE_MM = 0
+CLOUD_COVER_MARGINAL_PCT = 30
+CLOUD_COVER_UNSAFE_PCT = 75
 
 
 @dataclass
@@ -346,18 +352,28 @@ def evaluate_weather(report: WeatherReport) -> WeatherReport:
     if report.wind_speed_kmh is None or report.wind_gust_kmh is None or report.precipitation_mm is None or report.cloud_cover_pct is None:
         unsafe, reasons = True, ["Faltan datos meteorológicos para autorizar el salto."]
     else:
-        if report.wind_speed_kmh > 28:
-            unsafe, reasons = True, reasons + ["Viento superficial superior a 28 km/h."]
-        elif report.wind_speed_kmh >= 20:
-            marginal, reasons = True, reasons + ["Viento superficial marginal (20–28 km/h): solo tándem experimentado."]
-        if report.wind_gust_kmh > 35:
-            unsafe, reasons = True, reasons + ["Ráfagas superiores a 35 km/h."]
-        if report.precipitation_mm > 0:
+        if report.wind_speed_kmh > WIND_SPEED_UNSAFE_KMH:
+            unsafe, reasons = True, reasons + [
+                f"Viento superficial superior a {WIND_SPEED_UNSAFE_KMH} km/h."
+            ]
+        elif report.wind_speed_kmh >= WIND_SPEED_MARGINAL_KMH:
+            marginal, reasons = True, reasons + [
+                f"Viento superficial marginal ({WIND_SPEED_MARGINAL_KMH}–{WIND_SPEED_UNSAFE_KMH} km/h): solo tándem experimentado."
+            ]
+        if report.wind_gust_kmh > WIND_GUST_UNSAFE_KMH:
+            unsafe, reasons = True, reasons + [
+                f"Ráfagas superiores a {WIND_GUST_UNSAFE_KMH} km/h."
+            ]
+        if report.precipitation_mm > PRECIPITATION_UNSAFE_MM:
             unsafe, reasons = True, reasons + ["Existe precipitación."]
-        if report.cloud_cover_pct > 75:
-            unsafe, reasons = True, reasons + ["Cobertura de nubes superior a 75%."]
-        elif report.cloud_cover_pct >= 30:
-            marginal, reasons = True, reasons + ["Cobertura marginal (30–75%)."]
+        if report.cloud_cover_pct > CLOUD_COVER_UNSAFE_PCT:
+            unsafe, reasons = True, reasons + [
+                f"Cobertura de nubes superior a {CLOUD_COVER_UNSAFE_PCT}%."
+            ]
+        elif report.cloud_cover_pct >= CLOUD_COVER_MARGINAL_PCT:
+            marginal, reasons = True, reasons + [
+                f"Cobertura marginal ({CLOUD_COVER_MARGINAL_PCT}–{CLOUD_COVER_UNSAFE_PCT}%)."
+            ]
     report.decision = "NO SEGURO / PROHIBIDO" if unsafe else ("MARGINAL" if marginal else "IDEAL")
     report.reasons = reasons or ["Condiciones dentro del rango ideal definido por Parachute S.A."]
     return report

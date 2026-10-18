@@ -148,6 +148,21 @@ Las herramientas disponibles son `consultar_clima(date)`,
 `consultar_faq(question)` y `calendarizar_cita(date)`. Las fechas usan
 `YYYY-MM-DD`.
 
+El servidor también publica estos resources de solo lectura:
+
+- `parachute://company/profile`: perfil y alcance del asistente.
+- `parachute://safety/flight-rules`: reglas compartidas con la evaluación de clima.
+- `parachute://faqs/corpus`: corpus oficial de preguntas frecuentes.
+
+Y ofrece estos prompts reutilizables:
+
+- `responder_faq(question)`: prepara una consulta fundamentada en FAQs.
+- `evaluar_clima(date)`: guía una consulta meteorológica.
+- `solicitar_cita_segura(date)`: guía la consulta climática y el intento de reserva.
+
+Los clientes MCP pueden descubrirlos con `resources/list` y `prompts/list`, y
+leerlos/obtenerlos con `resources/read` y `prompts/get`.
+
 ### Servidor A2A para el supervisor multiagente
 
 `a2a_server.py` envuelve el supervisor de `parachute_agents.py` en el protocolo
