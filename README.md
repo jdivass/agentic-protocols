@@ -1,5 +1,9 @@
 # Hoja de Trabajo 7 - Agentic protocol
 
+## Video de ejecución
+
+[Video de ejecución](https://youtu.be/77-wmtK8o6c)
+
 Sistema de asistencia conversacional para **Parachute S.A.** con integración a la base de conocimientos de FAQs (HDT4), verificación meteorológica en tiempo real mediante la API de Open-Meteo y agendamiento seguro de citas para paracaidismo, implementado bajo tres patrones de orquestación multiagente: Centralizada, Jerárquica y Descentralizada. Se seleccionó la aquitectura **Centralizada** para realizar la HDT6.
 
 ---
@@ -303,11 +307,3 @@ orchestration/
 
 ---
 
-## 7. Preguntas de Análisis y Respuestas
-
-El análisis detallado y las respuestas a las preguntas de diseño planteadas por Parachute S.A. se encuentran desarrolladas en **`respuestas_hdt5.md`** y compiladas en **`respuestas_hdt5.pdf`**:
-
-1. **¿Qué arquitectura/arquitecturas resuelven mejor este problema? ¿Por qué?**
-   - Comparación entre Centralizada, Jerárquica y Descentralizada en cuanto a simplicidad, latencia, consumo de tokens, determinismo de seguridad y mantenibilidad.
-2. **¿Considera que es necesario utilizar un sistema multiagente en este caso? ¿Por qué?**
-   - Evaluación crítica entre la complejidad operativa de un sistema multiagente frente a un agente único con function calling y herramientas deterministas bien encapsuladas.
