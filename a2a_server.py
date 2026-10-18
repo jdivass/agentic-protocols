@@ -1,5 +1,7 @@
 """Servidor A2A que publica el supervisor centralizado de Parachute."""
 from contextlib import asynccontextmanager
+import logging
+import time
 from uuid import uuid4
 
 import uvicorn
@@ -12,7 +14,13 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill, Role
 from starlette.applications import Starlette
 
-from centralizada import _respond, mcp_server
+from parachute_agents import respond, mcp_server
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("parachute.a2a")
 
 HOST = "0.0.0.0"
 PORT = 8100
@@ -37,8 +45,20 @@ class ParachuteExecutor(AgentExecutor):
             return
 
         context_id = context.context_id or str(uuid4())
-        output, history = await _respond(user_text, self._histories.get(context_id, []))
+        started = time.perf_counter()
+        logger.info("A2A request started: context=%s chars=%d", context_id, len(user_text))
+        try:
+            output, history = await respond(user_text, self._histories.get(context_id, []))
+        except Exception:
+            logger.exception("A2A request failed: context=%s", context_id)
+            raise
         self._histories[context_id] = history
+        logger.info(
+            "A2A request completed: context=%s chars=%d (%.0f ms)",
+            context_id,
+            len(output),
+            (time.perf_counter() - started) * 1000,
+        )
         await event_queue.enqueue_event(
             new_text_message(output, role=Role.ROLE_AGENT)
         )
@@ -60,14 +80,32 @@ agent_card = AgentCard(
     ],
     skills=[
         AgentSkill(
-            id="parachute-assistance",
-            name="Asistencia Parachute",
-            description="Responde FAQs, consulta clima y calendariza citas sujeto a validación meteorológica.",
-            tags=["parachute", "faq", "weather", "appointments"],
-            examples=["¿Qué equipo necesito?", "Consulta el clima para 2026-10-20"],
+            id="preguntas-frecuentes",
+            name="Preguntas frecuentes",
+            description="Responde preguntas de servicios, políticas, equipo y seguridad usando las FAQs oficiales.",
+            tags=["parachute", "faq", "informacion"],
+            examples=["¿Qué equipo necesito para saltar?"],
             input_modes=["text/plain"],
             output_modes=["text/plain"],
-        )
+        ),
+        AgentSkill(
+            id="evaluacion-meteorologica",
+            name="Evaluación meteorológica",
+            description="Consulta el pronóstico y evalúa las condiciones de seguridad para una fecha.",
+            tags=["clima", "weather", "seguridad"],
+            examples=["Consulta el clima para 2026-10-20"],
+            input_modes=["text/plain"],
+            output_modes=["text/plain"],
+        ),
+        AgentSkill(
+            id="calendarizacion-segura",
+            name="Calendarización segura",
+            description="Intenta calendarizar una cita, sujeto a la validación meteorológica determinista.",
+            tags=["citas", "reservas", "appointments"],
+            examples=["Quiero calendarizar una cita el 2026-10-20"],
+            input_modes=["text/plain"],
+            output_modes=["text/plain"],
+        ),
     ],
 )
 

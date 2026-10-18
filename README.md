@@ -35,10 +35,10 @@ Parachute S.A. ha expandido las capacidades de su agente conversacional con nuev
 
 El sistema resuelve el mismo problema mediante tres arquitecturas independientes utilizando el OpenAI / Agents SDK:
 
-### A. Arquitectura Centralizada (`centralizada.py`)
+### A. Arquitectura Centralizada (`parachute_agents.py`)
 - **Patrón**: Supervisor / Workers coordinados mediante `as_tool()`.
 - **Estructura**: Un agente supervisor central (`SupervisorAgent`) expone a los agentes especializados (`WeatherWorker`, `FAQWorker`, `CalendarWorker`) como herramientas ejecutables.
-- **Flujo**: El supervisor recibe todas las entradas del usuario, decide dinámicamente a qué worker invocar como herramienta, recopila la información y sintetiza la respuesta final.
+- **Flujo**: El supervisor recibe solicitudes del servidor A2A, decide dinámicamente a qué worker invocar como herramienta, recopila la información y sintetiza la respuesta final. `centralizada.py` funciona como cliente de terminal A2A.
 - **Diagrama**: `diagramas/centralizada.mmd`.
 
 ### B. Arquitectura Jerárquica (`jerarquica.py`)
@@ -138,20 +138,50 @@ Instala la dependencia (`pip install -r requirements.txt`) y levanta el servidor
 python mcp_server.py
 ```
 
-El endpoint MCP queda en `http://localhost:8000/mcp`. Configura ese URL en un
-cliente MCP compatible con Streamable HTTP y mantén el proceso activo mientras
-el cliente lo usa. `centralizada.py` ya actúa como cliente con
-`MCPServerStreamableHttp` de OpenAI Agents. Para cambiar el URL del servidor
-puedes definir `PARACHUTE_MCP_URL`; por defecto usa `http://localhost:8000/mcp`.
+El endpoint MCP queda en `http://localhost:8000/mcp`. El supervisor definido en
+`parachute_agents.py` se conecta con `MCPServerStreamableHttp` del SDK de OpenAI
+Agents. Para cambiar el URL puedes definir `PARACHUTE_MCP_URL`; por defecto usa
+`http://localhost:8000/mcp`.
 Para cambiar interfaz o puerto, ajusta `host` y `port` en `mcp_server.py`.
 
 Las herramientas disponibles son `consultar_clima(date)`,
 `consultar_faq(question)` y `calendarizar_cita(date)`. Las fechas usan
 `YYYY-MM-DD`.
 
-Abre dos terminales: en la primera inicia `python mcp_server.py`; en la segunda,
-`python centralizada.py`. El servidor debe estar levantado antes de iniciar el
-supervisor.
+### Servidor A2A para el supervisor multiagente
+
+`a2a_server.py` envuelve el supervisor de `parachute_agents.py` en el protocolo
+A2A. Conserva el transporte MCP para consultar las herramientas y publica su
+Agent Card en `http://localhost:8100/.well-known/agent-card.json`, junto con el
+endpoint JSON-RPC en `http://localhost:8100/`. La Agent Card anuncia tres
+skills: FAQs, evaluación meteorológica y calendarización segura.
+
+`centralizada.py` ahora es el cliente A2A de terminal. Usa `create_client` del
+SDK A2A, conserva un `context_id` durante la sesión y envía cada turno al
+servidor. Para iniciar todo el flujo, instala dependencias actualizadas con
+`pip install -r requirements.txt` y abre tres terminales:
+
+```bash
+# Terminal 1
+python mcp_server.py
+
+# Terminal 2
+python a2a_server.py
+
+# Terminal 3
+python centralizada.py
+```
+
+También admite una consulta única: `python centralizada.py "¿Qué equipo necesito?"`.
+Para cambiar el URL del servidor A2A define `PARACHUTE_A2A_URL` (por defecto
+`http://localhost:8100/`). El cliente espera hasta 180 segundos por respuesta;
+puedes ajustar ese límite con `PARACHUTE_A2A_TIMEOUT_SECONDS`. Para dar más
+tiempo a llamadas de herramientas MCP configura `PARACHUTE_MCP_TIMEOUT_SECONDS`
+(también 180 segundos por defecto).
+
+Ambos servidores escriben logs legibles en sus terminales: MCP registra el
+nombre de cada herramienta y su duración; A2A registra el inicio, resultado y
+duración de cada solicitud.
 
 Cada programa soporta dos modalidades: **consulta única vía argumentos** o **sesión de chat interactiva**:
 
@@ -230,7 +260,10 @@ herramientas y persistencia), por lo que no añaden llamadas de un modelo juez.
 
 ```text
 orchestration/
-├── centralizada.py            # Implementación con supervisor y as_tool()
+├── centralizada.py            # Cliente A2A de terminal
+├── parachute_agents.py        # Supervisor central y workers con as_tool()
+├── a2a_server.py              # Servidor A2A que envuelve el supervisor
+├── mcp_server.py              # Herramientas compartidas vía Streamable HTTP
 ├── jerarquica.py              # Implementación con Root/Managers y as_tool()
 ├── descentralizada.py         # Implementación peer-to-peer con handoff()
 ├── probar_todos_casos.py      # Script de verificación de reglas y clima en vivo

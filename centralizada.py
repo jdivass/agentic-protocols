@@ -1,93 +1,77 @@
-"""Supervisor centralizado conectado al servidor MCP de Parachute."""
+"""Cliente A2A de terminal para conversar con el supervisor Parachute."""
+import argparse
 import asyncio
 import os
+from uuid import uuid4
 
-from agents import Agent, Runner
-from agents.mcp import MCPServerStreamableHttp
+import httpx
+from a2a.client import ClientConfig, create_client
+from a2a.helpers import get_message_text
+from a2a.types import Message, Part, Role, SendMessageRequest
 
-from shared.parachute import agent_model, agent_model_settings, _apply_domain_guard
-
-MODEL = agent_model()
-SETTINGS = agent_model_settings()
-MCP_URL = os.getenv("PARACHUTE_MCP_URL", "http://localhost:8000/mcp")
-
-mcp_server = MCPServerStreamableHttp(
-    params={"url": MCP_URL},
-    name="Parachute MCP (Streamable HTTP)",
-    cache_tools_list=True,
-)
-
-weather_worker = Agent(
-    name="WeatherWorker",
-    instructions="Usa consultar_clima para evaluar una fecha. Nunca inventes datos.",
-    mcp_servers=[mcp_server],
-    model=MODEL,
-    model_settings=SETTINGS,
-)
-faq_worker = Agent(
-    name="FAQWorker",
-    instructions=("Responde exclusivamente usando consultar_faq. Si no hay coincidencia, "
-                  "di que no existe información en las FAQs. No uses conocimiento general."),
-    mcp_servers=[mcp_server],
-    model=MODEL,
-    model_settings=SETTINGS,
-)
-calendar_worker = Agent(
-    name="CalendarWorker",
-    instructions=("Usa calendarizar_cita. La herramienta vuelve a consultar el clima y "
-                  "rechaza condiciones inseguras; nunca afirmes éxito si scheduled no es true."),
-    mcp_servers=[mcp_server],
-    model=MODEL,
-    model_settings=SETTINGS,
-)
-supervisor = Agent(
-    name="SupervisorCentral",
-    instructions=(
-        "Eres el supervisor de Parachute S.A. Decide qué worker usar. Para una cita, "
-        "consulta primero el clima y luego delega en CalendarWorker. Nunca autorices "
-        "condiciones NO SEGURO / PROHIBIDO. Solo informa que se calendarizó si la "
-        "herramienta devuelve scheduled=true; la cita sigue siendo tentativa hasta "
-        "confirmación del instructor."
-    ),
-    model=MODEL,
-    model_settings=SETTINGS,
-    tools=[
-        weather_worker.as_tool("consultar_clima", "Consulta clima y aptitud para una fecha."),
-        faq_worker.as_tool("consultar_faq", "Consulta las preguntas frecuentes."),
-        calendar_worker.as_tool("calendarizar_cita", "Calendariza una cita con validación meteorológica."),
-    ],
-)
+A2A_URL = os.getenv("PARACHUTE_A2A_URL", "http://localhost:8100/")
+CLIENT_TIMEOUT_SECONDS = float(os.getenv("PARACHUTE_A2A_TIMEOUT_SECONDS", "180"))
 
 
-async def _respond(user_text: str, history: list | None = None) -> tuple[str, list]:
-    response = await Runner.run(supervisor, (history or []) + [{"role": "user", "content": user_text}])
-    output = response.final_output or ""
-    # El servidor valida toda operación de cita. Esta guarda mantiene las
-    # respuestas fuera del dominio respaldadas exclusivamente por las FAQs.
-    output = _apply_domain_guard(user_text, output)
-    return output, response.to_input_list()
+async def _send(client, text: str, context_id: str) -> str:
+    message = Message(
+        role=Role.ROLE_USER,
+        message_id=str(uuid4()),
+        context_id=context_id,
+        parts=[Part(text=text)],
+    )
+    response_text = ""
+    async for event in client.send_message(SendMessageRequest(message=message)):
+        if event.HasField("message"):
+            response_text = get_message_text(event.message)
+        elif event.HasField("artifact_update"):
+            response_text = "\n".join(
+                part.text for part in event.artifact_update.artifact.parts
+                if getattr(part, "text", None)
+            )
+    return response_text
 
 
-async def _main() -> None:
-    history = []
-    async with mcp_server:
+async def _main(query: str | None) -> None:
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(CLIENT_TIMEOUT_SECONDS, connect=min(10.0, CLIENT_TIMEOUT_SECONDS))
+    )
+    try:
+        client = await create_client(
+            A2A_URL,
+            client_config=ClientConfig(httpx_client=http_client),
+        )
+    except Exception as exc:
+        await http_client.aclose()
+        print(f"No se pudo conectar al servidor A2A en {A2A_URL}: {exc}")
+        return
+    context_id = str(uuid4())
+    try:
+        if query:
+            print(await _send(client, query, context_id))
+            return
+
+        print(f"Conectado al agente A2A en {A2A_URL}. Escribe 'salir' para terminar.")
         while True:
             try:
-                user_text = input("Tú: ").strip()
+                text = await asyncio.to_thread(input, "Tú: ")
             except (EOFError, KeyboardInterrupt):
-                print("Sesión finalizada.")
-                return
-            if user_text.lower() in {"salir", "exit", "quit"}:
-                print("Sesión finalizada.")
-                return
-            if not user_text:
+                break
+            if text.strip().lower() in {"salir", "exit", "quit"}:
+                break
+            if not text.strip():
                 continue
             try:
-                output, history = await _respond(user_text, history)
-                print(f"Agente: {output}")
+                print(f"Agente: {await _send(client, text.strip(), context_id)}")
             except Exception as exc:
-                print(f"Agente: No se pudo completar la solicitud: {exc}")
+                print(f"No se pudo completar la solicitud A2A: {exc}")
+    finally:
+        await client.close()
+        await http_client.aclose()
 
 
 if __name__ == "__main__":
-    asyncio.run(_main())
+    parser = argparse.ArgumentParser(description="Cliente A2A de Parachute")
+    parser.add_argument("query", nargs="*", help="Consulta única; omítela para iniciar el chat")
+    args = parser.parse_args()
+    asyncio.run(_main(" ".join(args.query).strip() or None))
