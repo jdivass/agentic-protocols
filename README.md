@@ -3,6 +3,7 @@
 ## Video de ejecución
 
 [Video de ejecución](https://youtu.be/77-wmtK8o6c)
+**NOTA**: Si bien las hojas de trabajo anteriores fueron realizadas en grupos de tres integrantes, con el equipo se acordó trabajar esta de manera individual con el objetivo de que cada miembro del grupo obtuviera los aprendizajes completos de los distintos protocolos agénticos, acordando también el uso de la misma base.
 
 Sistema de asistencia conversacional para **Parachute S.A.** con integración a la base de conocimientos de FAQs (HDT4), verificación meteorológica en tiempo real mediante la API de Open-Meteo y agendamiento seguro de citas para paracaidismo, implementado bajo tres patrones de orquestación multiagente: Centralizada, Jerárquica y Descentralizada. Se seleccionó la aquitectura **Centralizada** para realizar la HDT6.
 
